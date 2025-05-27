@@ -34,7 +34,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  google_fonts: ^6.2.1
+  google_fonts: ^6.2.1 # google字型 https://pub.dev/packages/google_fonts
+  dio: ^5.8.0+1 # web請求模組 https://pub.dev/packages/dio
+  provider: ^6.1.5 # 依賴注入框架 https://pub.dev/packages/provider
 dev_dependencies:
   flutter_test:
     sdk: flutter
