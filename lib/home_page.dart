@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'api_service.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final dio = context.read<ApiService>().getDioWithAuth();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Home page'), centerTitle: true),
       body: Center(
         child: ElevatedButton(
-          onPressed: () {
-            Navigator.pushNamed(context, '/login');
+          onPressed: () async {
+            Navigator.pushNamed(context, '/login'); // 導頁
+            final response = await dio.get('https://google.com/');
           },
           child: const Text('登入'),
         ),

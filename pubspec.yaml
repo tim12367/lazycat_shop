@@ -1,5 +1,5 @@
 name: lazycat_shop
-description: "A new Flutter project."
+description: "A shopping app"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: 3.7.2
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -29,14 +29,15 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
-    sdk: flutter
+    sdk: flutter # 3.29.3
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  google_fonts: ^6.2.1 # google字型 https://pub.dev/packages/google_fonts
-  dio: ^5.8.0+1 # web請求模組 https://pub.dev/packages/dio
-  provider: ^6.1.5 # 依賴注入框架 https://pub.dev/packages/provider
+  cupertino_icons: 1.0.8
+  google_fonts: 6.2.1 # google字型 https://pub.dev/packages/google_fonts
+  dio: 5.8.0+1 # web請求模組 https://pub.dev/packages/dio
+  provider: 6.1.5 # 依賴注入框架 https://pub.dev/packages/provider
+  flutter_secure_storage: 9.2.4 # 安全儲存空間 https://pub.dev/packages/flutter_secure_storage
 dev_dependencies:
   flutter_test:
     sdk: flutter
