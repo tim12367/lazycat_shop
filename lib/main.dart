@@ -7,8 +7,15 @@ import 'home_page.dart';
 import 'login_page.dart';
 
 void main() {
-  runApp(
-    MultiProvider(
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
       providers: [Provider<ApiService>(create: (_) => ApiService())],
       child: MaterialApp(
         title: 'Lazycat Shop',
@@ -41,6 +48,6 @@ void main() {
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
