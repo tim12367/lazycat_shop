@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lazycat_shop/api_service.dart';
+import 'package:lazycat_shop/config.dart';
 import 'package:provider/provider.dart';
 
 import 'home_page.dart';
@@ -16,7 +17,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [Provider<ApiService>(create: (_) => ApiService())],
+      providers: [
+        Provider<Config>(create: (_) => Config()),
+        Provider<ApiService>(create: (_) => ApiService(context)),
+      ],
       child: MaterialApp(
         title: 'Lazycat Shop',
 
@@ -33,7 +37,6 @@ class MyApp extends StatelessWidget {
             seedColor: Colors.purple,
             brightness: Brightness.dark,
           ),
-
           textTheme: TextTheme(
             displayLarge: const TextStyle(
               fontSize: 72,
