@@ -2,11 +2,10 @@
  * 共用API請求
  */
 import 'dart:developer';
-import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:lazycat_shop/token_storage.dart';
-import 'package:provider/provider.dart';
 
 import 'config.dart';
 
@@ -21,19 +20,21 @@ class ApiService {
     final lazyCatBaseUrl = config.getLazyCatBaseUrl();
     final dio = Dio();
     dio.options.baseUrl = lazyCatBaseUrl; // 設定baseUrl
-    // dio.options.headers = {
-    //   HttpHeaders.accessControlAllowOriginHeader: "*",
-    //   HttpHeaders.accessControlAllowMethodsHeader: "GET,PUT,PATCH,POST,DELETE",
-    //   HttpHeaders.accessControlAllowHeadersHeader:
-    //       "Origin, X-Requested-With, Content-Type, Accept",
-    // };
+
     // 請求LOG
-    dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
-    dio.interceptors.add(LazyCatInterceptors(context)); // 304自動重試
+    dio.interceptors.add(
+      LogInterceptor(
+        requestBody: true,
+        requestHeader: true,
+        responseBody: true,
+      ),
+    );
+    dio.interceptors.add(LazyCatInterceptors(context)); // 自動重試
     return dio;
   }
 }
 
+// 自訂請求攔截器
 class LazyCatInterceptors extends Interceptor {
   final Config config = Config();
   final BuildContext context;
@@ -54,47 +55,31 @@ class LazyCatInterceptors extends Interceptor {
 
     // 塞token
     final accessToken = await tokenStorage.getAccessToken();
-    if (accessToken != null) {
+    if (accessToken != null && accessToken.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $accessToken';
     }
 
-    super.onRequest(options, handler);
-  }
-
-  // 當響應即將被處理時調用
-  @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {
-    log(
-      'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}',
-    );
-    super.onResponse(response, handler);
+    handler.next(options);
   }
 
   // 錯誤時
   @override
-  Future onError(DioException err, ErrorInterceptorHandler handler) async {
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
     log(
       'ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}',
     );
-    final lazyCatBaseUrl = config.getLazyCatBaseUrl();
 
+    int? statusCode = err.response?.statusCode;
     // 若遇到401
-    if (err.response?.statusCode == 401) {
+    if (statusCode == 401 || statusCode == 403) {
+      log("發生錯誤401|403，嘗試刷新access token...");
       String? refreshToken = await tokenStorage.getRefreshToken();
 
       //有 refreshToken，重試
       if (refreshToken != null && refreshToken.isNotEmpty) {
         try {
-          // 請求新access token /get-access-token
-          final getAccessTokenResponse = await dio.post(
-            '$lazyCatBaseUrl/get-access-token',
-            options: Options(
-              headers: {"Authorization": "Bearer $refreshToken"},
-            ),
-          );
-
           // 從回應取得token
-          String newAccessToken = getAccessTokenResponse.data.toString();
+          String newAccessToken = await _getAccessToken(refreshToken);
           tokenStorage.setAccessToken(newAccessToken); // 更新 access token
 
           // 重試之前的請求
@@ -104,13 +89,40 @@ class LazyCatInterceptors extends Interceptor {
           return handler.resolve(response);
         } catch (e) {
           // 失敗清空token
+          log("刷新token失敗!! 清空token");
           tokenStorage.clear();
         }
       } else {
-        // 無 refreshToken，清空
+        // 無 refreshToken，清空資料
+        log("刷新token失敗!!");
         tokenStorage.clear();
+        // TODO: 返回登入頁面
       }
     }
-    super.onError(err, handler);
+
+    handler.next(err); // 繼續傳遞錯誤
+  }
+
+  // 用 refreshToken 取得 accessToken
+  Future<String> _getAccessToken(String refreshToken) async {
+    final dio = Dio();
+    final Config config = Config();
+    final lazyCatBaseUrl = config.getLazyCatBaseUrl();
+
+    dio.interceptors.add(
+      LogInterceptor(
+        requestBody: true,
+        requestHeader: true,
+        responseBody: true,
+      ),
+    );
+
+    // 請求新access token /get-access-token
+    final getAccessTokenResponse = await dio.post(
+      '$lazyCatBaseUrl/get-access-token',
+      options: Options(headers: {"Authorization": "Bearer $refreshToken"}),
+    );
+
+    return getAccessTokenResponse.data.toString();
   }
 }
