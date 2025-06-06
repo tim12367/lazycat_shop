@@ -20,6 +20,8 @@ class ApiService {
     final lazyCatBaseUrl = config.getLazyCatBaseUrl();
     final dio = Dio();
     dio.options.baseUrl = lazyCatBaseUrl; // 設定baseUrl
+    dio.options.extra['maxAuthRetryLimit'] = 5; // 最大重試次數
+    dio.options.extra['retryCount'] = 1; // 目前重試次數
 
     // 請求LOG
     dio.interceptors.add(
@@ -29,7 +31,7 @@ class ApiService {
         responseBody: true,
       ),
     );
-    dio.interceptors.add(LazyCatInterceptors(context)); // 自動重試
+    dio.interceptors.add(LazyCatInterceptors(context, dio)); // 自動重試
     return dio;
   }
 }
@@ -38,11 +40,11 @@ class ApiService {
 class LazyCatInterceptors extends Interceptor {
   final Config config = Config();
   final BuildContext context;
+  final Dio originalDio;
 
-  LazyCatInterceptors(this.context);
+  LazyCatInterceptors(this.context, this.originalDio);
 
   final tokenStorage = TokenStorage();
-  final dio = Dio();
 
   // 送出請求前
   @override
@@ -70,28 +72,32 @@ class LazyCatInterceptors extends Interceptor {
     );
 
     int? statusCode = err.response?.statusCode;
+
+    // 取出原始options
+    RequestOptions originalOptions = err.requestOptions;
+
+    int maxAuthRetryLimit =
+        originalOptions.extra['maxAuthRetryLimit']; // 最大重試次數
+    int retryCount = originalOptions.extra['retryCount']; // 目前重試次數
+
     // 若遇到401
-    if (statusCode == 401 || statusCode == 403) {
-      log("發生錯誤401|403，嘗試刷新access token...");
+    if ((statusCode == 401 || statusCode == 403) &&
+        retryCount < maxAuthRetryLimit) {
+      log("發生錯誤401|403，嘗試刷新access token...($retryCount/$maxAuthRetryLimit)次");
+      // 更新計數器
+      originalOptions.extra['retryCount'] = retryCount + 1;
+
       String? refreshToken = await tokenStorage.getRefreshToken();
 
       //有 refreshToken，重試
       if (refreshToken != null && refreshToken.isNotEmpty) {
-        try {
-          // 從回應取得token
-          String newAccessToken = await _getAccessToken(refreshToken);
-          tokenStorage.setAccessToken(newAccessToken); // 更新 access token
+        // 從回應取得token
+        String newAccessToken = await _getAccessToken(refreshToken);
+        await tokenStorage.setAccessToken(newAccessToken); // 更新 access token
 
-          // 重試之前的請求
-          err.requestOptions.headers['Authorization'] =
-              'Bearer $newAccessToken';
-          final response = await dio.fetch(err.requestOptions);
-          return handler.resolve(response);
-        } catch (e) {
-          // 失敗清空token
-          log("刷新token失敗!! 清空token");
-          tokenStorage.clear();
-        }
+        // 重試之前的請求
+        final response = await originalDio.fetch(originalOptions);
+        return handler.resolve(response);
       } else {
         // 無 refreshToken，清空資料
         log("刷新token失敗!!");
