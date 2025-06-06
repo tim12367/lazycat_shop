@@ -21,7 +21,7 @@ class ApiService {
     final dio = Dio();
     dio.options.baseUrl = lazyCatBaseUrl; // 設定baseUrl
     dio.options.extra['maxAuthRetryLimit'] = 5; // 最大重試次數
-    dio.options.extra['retryCount'] = 1; // 目前重試次數
+    dio.options.extra['retryCount'] = 0; // 目前重試次數
 
     // 請求LOG
     dio.interceptors.add(
@@ -83,9 +83,13 @@ class LazyCatInterceptors extends Interceptor {
     // 若遇到401
     if ((statusCode == 401 || statusCode == 403) &&
         retryCount < maxAuthRetryLimit) {
-      log("發生錯誤401|403，嘗試刷新access token...($retryCount/$maxAuthRetryLimit)次");
       // 更新計數器
-      originalOptions.extra['retryCount'] = retryCount + 1;
+      int currentRetryCount = retryCount + 1;
+      originalOptions.extra['retryCount'] = currentRetryCount;
+
+      log(
+        "發生錯誤401|403，嘗試刷新access token...($currentRetryCount/$maxAuthRetryLimit)次",
+      );
 
       String? refreshToken = await tokenStorage.getRefreshToken();
 
